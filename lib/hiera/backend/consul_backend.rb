@@ -147,7 +147,15 @@ class Hiera
           end
 
         end
-        answer
+        if @config[:no_json_decode]
+          answer
+        else
+          begin
+            JSON.parse(answer)
+          rescue
+            answer
+          end
+        end
       end
 
       def parse_result(res)
