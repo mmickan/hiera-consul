@@ -20,6 +20,8 @@ The following parameters are also valid and available:
       :host: 127.0.0.1
       :port: 8500
       :protocol: 1
+      :failure: consistent
+      :ignore_absent: true
       :use_ssl: false
       :ssl_verify: false
       :ssl_cert: /path/to/cert
