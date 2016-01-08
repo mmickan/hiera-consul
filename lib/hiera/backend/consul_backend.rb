@@ -17,6 +17,8 @@ class Hiera
         @config[:port] ||= '8500'
         @config[:protocol] ||= 1
         @config[:paths] ||= ['kv/common']
+        @config[:failure] ||= 'fail'
+        @config[:ignore_absent] ||= true
 
         # initialisation
         @consul = Net::HTTP.new(@config[:host], @config[:port])
@@ -43,10 +45,35 @@ class Hiera
         else
           @consul.use_ssl = false
         end
+
+        if @config[:ignore_absent] and ! File.file?('/usr/bin/consul')
+          Hiera.debug("[hiera-consul]: Skipping all lookups as consul is not present")
+          @consul = nil
+          return
+        end
+
+        if @config[:failure] == 'consistent'
+          Hiera.debug("[hiera-consul]: failure mode consistent, performing initial check")
+          begin
+            result = @consul.request(Net::HTTP::Get.new("/v#{@config[:protocol]}/agent/self"))
+          rescue
+            result = nil
+          end
+          if ! result.kind_of?(Net::HTTPSuccess)
+            Hiera.debug("[hiera-consul]: Unable to connect to consul; skipping all lookups!")
+            @consul = nil
+            return
+          end
+        end
       end
 
       def lookup(key, scope, order_override, resolution_type)
         Hiera.debug("Looking up #{key} in Consul backend")
+
+        if (@config[:failure] == 'consistent' or @config[:ignore_absent]) and @consul == nil
+          Hiera.debug("[hiera-consul]: Skipping as consul not present at initialisation")
+          return nil
+        end
 
         answer = nil
         prefix = "/v#{@config[:protocol]}"
